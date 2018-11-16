@@ -2654,7 +2654,7 @@ resource "azurerm_virtual_machine_scale_set" "test" {
   os_profile {
     computer_name_prefix = "prefix"
     admin_username       = "ubuntu"
-    admin_password       = "password"
+    admin_password       = "Password1234"
     custom_data          = "updated custom data!"
   }
 
