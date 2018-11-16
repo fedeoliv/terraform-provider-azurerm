@@ -342,9 +342,7 @@ func resourceArmVirtualMachineScaleSet() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"disable_password_authentication": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
-							ForceNew: true,
+							Required: true,
 						},
 						"ssh_keys": {
 							Type:     schema.TypeList,
@@ -1517,7 +1515,9 @@ func resourceArmVirtualMachineScaleSetOsProfileLinuxConfigHash(v interface{}) in
 	var buf bytes.Buffer
 
 	if m, ok := v.(map[string]interface{}); ok {
-		buf.WriteString(fmt.Sprintf("%t-", m["disable_password_authentication"].(bool)))
+		if v, ok := m["disable_password_authentication"]; ok {
+			buf.WriteString(fmt.Sprintf("%t-", v.(bool)))
+		}
 	}
 
 	return hashcode.String(buf.String())
