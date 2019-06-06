@@ -21,3 +21,7 @@ variable "openshift_client_secret" {
 variable "tenant_id" {
   description = "The Azure AD tenant ID where the Managed OpenShift cluster should be created"
 }
+
+variable "openshift_version" {
+  description = "The Managed OpenShift version"
+}

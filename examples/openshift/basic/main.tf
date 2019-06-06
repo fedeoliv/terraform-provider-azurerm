@@ -15,6 +15,7 @@ resource "azurerm_openshift_cluster" "example" {
   resource_group_name = "${azurerm_resource_group.example.name}"
   tenant_id           = "${var.tenant_id}"
   network_security_group_id = "${azurerm_network_security_group.test.id}"
+  openshift_version   = "${var.openshift_version}"
 
   agent_pool_profile {
     name              = "default"
