@@ -16,6 +16,14 @@ resource "azurerm_openshift_cluster" "example" {
   tenant_id           = "${var.tenant_id}"
   network_security_group_id = "${azurerm_network_security_group.test.id}"
 
+  agent_pool_profile {
+    name              = "default"
+    count             = 3
+    vm_size           = "Standard_D2s_v3"
+    os_type           = "Linux"
+    os_disk_size_gb   = 30
+  }
+
   service_principal {
     client_id     = "${var.openshift_client_id}"
     client_secret = "${var.openshift_client_secret}"
