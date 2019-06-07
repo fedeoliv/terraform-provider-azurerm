@@ -17,12 +17,20 @@ resource "azurerm_openshift_cluster" "example" {
   network_security_group_id = "${azurerm_network_security_group.test.id}"
   openshift_version   = "${var.openshift_version}"
 
+  master_pool_profile {
+    name              = "default"
+    count             = 3
+    vm_size           = "Standard_D2s_v3"
+    os_type           = "Linux"
+  }
+
   agent_pool_profile {
     name              = "default"
     count             = 3
     vm_size           = "Standard_D2s_v3"
     os_type           = "Linux"
     os_disk_size_gb   = 30
+    role              = "Compute"
   }
 
   service_principal {
