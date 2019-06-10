@@ -10,13 +10,27 @@ resource "azurerm_network_security_group" "test" {
 }
 
 resource "azurerm_openshift_cluster" "example" {
-  name                = "${var.prefix}-openshift"
-  location            = "${azurerm_resource_group.example.location}"
-  resource_group_name = "${azurerm_resource_group.example.name}"
-  tenant_id           = "${var.tenant_id}"
+  name                      = "${var.prefix}-openshift"
+  location                  = "${azurerm_resource_group.example.location}"
+  resource_group_name       = "${azurerm_resource_group.example.name}"
+  openshift_version         = "${var.openshift_version}"
+
   network_security_group_id = "${azurerm_network_security_group.test.id}"
-  openshift_version   = "${var.openshift_version}"
-  fqdn                = ""
+  fqdn                      = ""
+
+  auth_profile {
+    providers = [
+      {
+        name = "Azure AD"
+        provider = {
+          kind            = "${var.provider_kind}"
+          client_id       = "${var.provider_client_id}"
+          client_secret   = "${var.provider_client_secret}"
+          group_id        = "${var.provider_group_id}"
+        }
+      }
+    ]
+  }
 
   master_pool_profile {
     name              = "default"
@@ -37,11 +51,6 @@ resource "azurerm_openshift_cluster" "example" {
   network_profile {
     vnet_cidr         = "10.0.0.0/8"
     peer_vnet_id      = "10.0.0.0/8"
-  }
-
-  service_principal {
-    client_id     = "${var.openshift_client_id}"
-    client_secret = "${var.openshift_client_secret}"
   }
 
   tags = {

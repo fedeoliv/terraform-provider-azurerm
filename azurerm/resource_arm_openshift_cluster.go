@@ -139,8 +139,6 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 				},
 			},
 
-			
-
 			// Optional
 			"addon_profile": {
 				Type:     schema.TypeList,
@@ -498,6 +496,7 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	openshiftVersion := d.Get("openshift_version").(string)
 	fqdn := d.Get("fqdn").(string)
+	authProfile := expandOpenShiftClusterAuthProfile(d, tenantId)
 	masterProfile := expandOpenShiftClusterMasterPoolProfile(d)
 	agentProfiles := expandOpenShiftClusterAgentPoolProfiles(d)
 	networkProfile := expandOpenShiftClusterNetworkProfile(d)
@@ -512,10 +511,10 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 			// PublicHostname: ,
 			Fqdn: &fqdn,
 			// RouterProfiles:    routerProfiles,
+			AuthProfile:       authProfile,
 			MasterPoolProfile: masterProfile,
 			AgentPoolProfiles: &agentProfiles,
 			NetworkProfile:    networkProfile,
-			// AuthProfile: ,
 		},
 		Tags: expandTags(tags),
 	}
@@ -633,10 +632,8 @@ func expandOpenShiftClusterMasterPoolProfile(d *schema.ResourceData) *containers
 	config := profiles[0].(map[string]interface{})
 
 	name := config["name"].(string)
-	poolType := config["type"].(string)
 	count := int32(config["count"].(int))
 	vmSize := config["vm_size"].(string)
-	osDiskSizeGB := int32(config["os_disk_size_gb"].(int))
 	osType := config["os_type"].(string)
 
 	profile := containerservice.OpenShiftManagedClusterMasterPoolProfile{
@@ -650,6 +647,62 @@ func expandOpenShiftClusterMasterPoolProfile(d *schema.ResourceData) *containers
 	return &profile
 }
 
+func expandOpenShiftClusterAuthProfile(d *schema.ResourceData, tenantId string) *containerservice.OpenShiftManagedClusterAuthProfile {
+	configs := d.Get("auth_profile").([]interface{})
+
+	if len(configs) == 0 {
+		return nil
+	}
+
+	config := configs[0].(map[string]interface{})
+	providersConfig := config["providers"].([]interface{})
+	providers := make([]containerservice.OpenShiftManagedClusterIdentityProvider, 0)
+
+	for provider_id := range providersConfig {
+		providerConfig := providersConfig[provider_id].(map[string]interface{})
+		provider := providerConfig["provider"].(map[string]interface{})
+
+		name := providerConfig["name"].(string)
+		identityProvider := expandOpenShiftClusterIdentityProvider(provider, tenantId)
+
+		profile := containerservice.OpenShiftManagedClusterIdentityProvider{
+			Name:     utils.String(name),
+			Provider: identityProvider,
+		}
+
+		providers = append(providers, profile)
+	}
+
+	profile := containerservice.OpenShiftManagedClusterAuthProfile{
+		IdentityProviders: &providers,
+	}
+
+	return &profile
+}
+
+func expandOpenShiftClusterIdentityProvider(provider map[string]interface{}, tenantId string) containerservice.BasicOpenShiftManagedClusterBaseIdentityProvider {
+	kind := provider["kind"].(string)
+
+	switch kind {
+	case string(containerservice.KindAADIdentityProvider):
+		clientId := provider["client_id"].(string)
+		clientSecret := provider["client_secret"].(string)
+		groupId := provider["group_id"].(string)
+
+		return containerservice.OpenShiftManagedClusterAADIdentityProvider{
+			ClientID:             utils.String(clientId),
+			Secret:               utils.String(clientSecret),
+			TenantID:             utils.String(tenantId),
+			CustomerAdminGroupID: utils.String(groupId),
+			Kind:                 containerservice.KindAADIdentityProvider,
+		}
+	default:
+		return containerservice.OpenShiftManagedClusterBaseIdentityProvider{
+			Kind: containerservice.KindOpenShiftManagedClusterBaseIdentityProvider,
+		}
+	}
+}
+
 func expandOpenShiftClusterAgentPoolProfiles(d *schema.ResourceData) []containerservice.OpenShiftManagedClusterAgentPoolProfile {
 	configs := d.Get("agent_pool_profile").([]interface{})
 	profiles := make([]containerservice.OpenShiftManagedClusterAgentPoolProfile, 0)
@@ -657,10 +710,8 @@ func expandOpenShiftClusterAgentPoolProfiles(d *schema.ResourceData) []container
 	for config_id := range configs {
 		config := configs[config_id].(map[string]interface{})
 		name := config["name"].(string)
-		poolType := config["type"].(string)
 		count := int32(config["count"].(int))
 		vmSize := config["vm_size"].(string)
-		osDiskSizeGB := int32(config["os_disk_size_gb"].(int))
 		osType := config["os_type"].(string)
 		role := config["role"].(string)
 
