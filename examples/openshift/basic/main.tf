@@ -16,6 +16,7 @@ resource "azurerm_openshift_cluster" "example" {
   tenant_id           = "${var.tenant_id}"
   network_security_group_id = "${azurerm_network_security_group.test.id}"
   openshift_version   = "${var.openshift_version}"
+  fqdn                = ""
 
   master_pool_profile {
     name              = "default"
@@ -31,6 +32,11 @@ resource "azurerm_openshift_cluster" "example" {
     os_type           = "Linux"
     os_disk_size_gb   = 30
     role              = "Compute"
+  }
+
+  network_profile {
+    vnet_cidr         = "10.0.0.0/8"
+    peer_vnet_id      = "10.0.0.0/8"
   }
 
   service_principal {
