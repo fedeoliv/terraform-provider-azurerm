@@ -740,10 +740,11 @@ func expandOpenShiftClusterNetworkProfile(d *schema.ResourceData) *containerserv
 	config := profiles[0].(map[string]interface{})
 
 	vnetCidr := config["vnet_cidr"].(string)
+	peerVnetId := config["peer_vnet_id"].(string)
 
 	profile := containerservice.NetworkProfile{
 		VnetCidr: utils.String(vnetCidr),
-		// PeerVnetID: ,
+		PeerVnetID: utils.String(peerVnetId),
 	}
 
 	return &profile
