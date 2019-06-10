@@ -37,6 +37,7 @@ resource "azurerm_openshift_cluster" "example" {
     count             = 3
     vm_size           = "Standard_D2s_v3"
     os_type           = "Linux"
+    subnet_cidr       = "10.0.0.0/24"
   }
 
   agent_pool_profile {

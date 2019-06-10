@@ -575,10 +575,14 @@ func resourceArmOpenShiftClusterRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	if props := resp.OpenShiftManagedClusterProperties; props != nil {
-		// d.Set("dns_prefix", props.DNSPrefix)
 		d.Set("fqdn", props.Fqdn)
 		d.Set("openshift_version", props.OpenShiftVersion)
-		// d.Set("node_resource_group", props.NodeResourceGroup)
+
+		masterPoolProfile := flattenOpenShiftClusterMasterPoolProfile(props.MasterPoolProfile)
+
+		if err := d.Set("master_pool_profile", masterPoolProfile); err != nil {
+			return fmt.Errorf("Error setting `master_pool_profile`: %+v", err)
+		}
 
 		agentPoolProfiles := flattenOpenShiftClusterAgentPoolProfiles(props.AgentPoolProfiles, resp.Fqdn)
 
@@ -635,13 +639,14 @@ func expandOpenShiftClusterMasterPoolProfile(d *schema.ResourceData) *containers
 	count := int32(config["count"].(int))
 	vmSize := config["vm_size"].(string)
 	osType := config["os_type"].(string)
+	subnetCidr := config["name"].(string)
 
 	profile := containerservice.OpenShiftManagedClusterMasterPoolProfile{
-		Name:   utils.String(name),
-		Count:  utils.Int32(count),
-		VMSize: containerservice.OpenShiftContainerServiceVMSize(vmSize),
-		// SubnetCidr:
-		OsType: containerservice.OSType(osType),
+		Name:       utils.String(name),
+		Count:      utils.Int32(count),
+		VMSize:     containerservice.OpenShiftContainerServiceVMSize(vmSize),
+		SubnetCidr: utils.String(subnetCidr),
+		OsType:     containerservice.OSType(osType),
 	}
 
 	return &profile
@@ -743,11 +748,41 @@ func expandOpenShiftClusterNetworkProfile(d *schema.ResourceData) *containerserv
 	peerVnetId := config["peer_vnet_id"].(string)
 
 	profile := containerservice.NetworkProfile{
-		VnetCidr: utils.String(vnetCidr),
+		VnetCidr:   utils.String(vnetCidr),
 		PeerVnetID: utils.String(peerVnetId),
 	}
 
 	return &profile
+}
+
+func flattenOpenShiftClusterMasterPoolProfile(profile *containerservice.OpenShiftManagedClusterMasterPoolProfile) interface{} {
+	if profile == nil {
+		return nil
+	}
+
+	masterPoolProfile := make(map[string]interface{})
+
+	if profile.Name != nil {
+		masterPoolProfile["name"] = *profile.Name
+	}
+
+	if profile.Count != nil {
+		masterPoolProfile["count"] = int(*profile.Count)
+	}
+
+	if profile.VMSize != "" {
+		masterPoolProfile["vm_size"] = string(profile.VMSize)
+	}
+
+	if profile.OsType != "" {
+		masterPoolProfile["os_type"] = string(profile.OsType)
+	}
+
+	if profile.SubnetCidr != nil {
+		masterPoolProfile["subnet_cidr"] = string(*profile.SubnetCidr)
+	}
+
+	return masterPoolProfile
 }
 
 func flattenOpenShiftClusterAgentPoolProfiles(profiles *[]containerservice.OpenShiftManagedClusterAgentPoolProfile, fqdn *string) []interface{} {
