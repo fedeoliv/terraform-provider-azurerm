@@ -8,6 +8,7 @@ import (
 
 type Client struct {
 	KubernetesClustersClient   containerservice.ManagedClustersClient
+	OpenShiftClustersClient    containerservice.OpenShiftManagedClustersClient
 	GroupsClient               containerinstance.ContainerGroupsClient
 	RegistryClient             containerregistry.RegistriesClient
 	RegistryReplicationsClient containerregistry.ReplicationsClient
