@@ -578,6 +578,12 @@ func resourceArmOpenShiftClusterRead(d *schema.ResourceData, meta interface{}) e
 		d.Set("fqdn", props.Fqdn)
 		d.Set("openshift_version", props.OpenShiftVersion)
 
+		authProfile := flattenOpenShiftClusterAuthProfile(props.AuthProfile)
+
+		if err := d.Set("auth_profile", authProfile); err != nil {
+			return fmt.Errorf("Error setting `auth_profile`: %+v", err)
+		}
+
 		masterPoolProfile := flattenOpenShiftClusterMasterPoolProfile(props.MasterPoolProfile)
 
 		if err := d.Set("master_pool_profile", masterPoolProfile); err != nil {
@@ -753,6 +759,50 @@ func expandOpenShiftClusterNetworkProfile(d *schema.ResourceData) *containerserv
 	}
 
 	return &profile
+}
+
+func flattenOpenShiftClusterAuthProfile(profile *containerservice.OpenShiftManagedClusterAuthProfile) interface{} {
+	if profile == nil {
+		return nil
+	}
+
+	authProfile := make(map[string]interface{})
+
+	if profile.IdentityProviders == nil {
+		return authProfile
+	}
+
+	providers := make([]interface{}, 0)
+
+	for _, provider := range *profile.IdentityProviders {
+		providerConfig := expandOpenShiftClusterIdentityProviderConfig(provider)
+		providers = append(providers, providerConfig)
+	}
+
+	authProfile["providers"] = providers
+
+	return authProfile
+}
+
+func expandOpenShiftClusterIdentityProviderConfig(identityProvider containerservice.OpenShiftManagedClusterIdentityProvider) map[string]interface{} {
+	baseProvider, _ := identityProvider.Provider.AsOpenShiftManagedClusterBaseIdentityProvider()
+
+	provider := make(map[string]interface{})
+	provider["kind"] = string(baseProvider.Kind)
+
+	if baseProvider.Kind == containerservice.KindAADIdentityProvider {
+		aadProvider, _ := identityProvider.Provider.AsOpenShiftManagedClusterAADIdentityProvider()
+
+		provider["client_id"] = string(*aadProvider.ClientID)
+		provider["client_secret"] = string(*aadProvider.Secret)
+		provider["group_id"] = string(*aadProvider.CustomerAdminGroupID)
+	}
+
+	providerConfig := make(map[string]interface{})
+	providerConfig["name"] = *identityProvider.Name
+	providerConfig["provider"] = provider
+
+	return providerConfig
 }
 
 func flattenOpenShiftClusterMasterPoolProfile(profile *containerservice.OpenShiftManagedClusterMasterPoolProfile) interface{} {
