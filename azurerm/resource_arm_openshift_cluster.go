@@ -645,7 +645,7 @@ func expandOpenShiftClusterMasterPoolProfile(d *schema.ResourceData) *containers
 	count := int32(config["count"].(int))
 	vmSize := config["vm_size"].(string)
 	osType := config["os_type"].(string)
-	subnetCidr := config["name"].(string)
+	subnetCidr := config["subnet_cidr"].(string)
 
 	profile := containerservice.OpenShiftManagedClusterMasterPoolProfile{
 		Name:       utils.String(name),
@@ -724,15 +724,16 @@ func expandOpenShiftClusterAgentPoolProfiles(d *schema.ResourceData) []container
 		count := int32(config["count"].(int))
 		vmSize := config["vm_size"].(string)
 		osType := config["os_type"].(string)
+		subnetCidr := config["subnet_cidr"].(string)
 		role := config["role"].(string)
 
 		profile := containerservice.OpenShiftManagedClusterAgentPoolProfile{
-			Name:   utils.String(name),
-			Count:  utils.Int32(count),
-			VMSize: containerservice.OpenShiftContainerServiceVMSize(vmSize),
-			// SubnetCidr:
-			OsType: containerservice.OSType(osType),
-			Role:   containerservice.OpenShiftAgentPoolProfileRole(role),
+			Name:       utils.String(name),
+			Count:      utils.Int32(count),
+			VMSize:     containerservice.OpenShiftContainerServiceVMSize(vmSize),
+			SubnetCidr: utils.String(subnetCidr),
+			OsType:     containerservice.OSType(osType),
+			Role:       containerservice.OpenShiftAgentPoolProfileRole(role),
 		}
 
 		profiles = append(profiles, profile)
@@ -864,6 +865,10 @@ func flattenOpenShiftClusterAgentPoolProfiles(profiles *[]containerservice.OpenS
 
 		if profile.OsType != "" {
 			agentPoolProfile["os_type"] = string(profile.OsType)
+		}
+
+		if profile.SubnetCidr != nil {
+			agentPoolProfile["subnet_cidr"] = string(*profile.SubnetCidr)
 		}
 
 		agentPoolProfiles = append(agentPoolProfiles, agentPoolProfile)
