@@ -500,6 +500,7 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 	masterProfile := expandOpenShiftClusterMasterPoolProfile(d)
 	agentProfiles := expandOpenShiftClusterAgentPoolProfiles(d)
 	networkProfile := expandOpenShiftClusterNetworkProfile(d)
+	routerProfiles := expandOpenShiftClusterRouterProfiles(d)
 	tags := d.Get("tags").(map[string]interface{})
 
 	parameters := containerservice.OpenShiftManagedCluster{
@@ -509,12 +510,12 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 		OpenShiftManagedClusterProperties: &containerservice.OpenShiftManagedClusterProperties{
 			OpenShiftVersion: utils.String(openshiftVersion),
 			// PublicHostname: ,
-			Fqdn: &fqdn,
-			// RouterProfiles:    routerProfiles,
+			Fqdn:              &fqdn,
 			AuthProfile:       authProfile,
 			MasterPoolProfile: masterProfile,
 			AgentPoolProfiles: &agentProfiles,
 			NetworkProfile:    networkProfile,
+			RouterProfiles:    &routerProfiles,
 		},
 		Tags: expandTags(tags),
 	}
@@ -600,6 +601,12 @@ func resourceArmOpenShiftClusterRead(d *schema.ResourceData, meta interface{}) e
 
 		if err := d.Set("network_profile", networkProfile); err != nil {
 			return fmt.Errorf("Error setting `network_profile`: %+v", err)
+		}
+
+		routerProfiles := flattenOpenShiftClusterRouterProfiles(props.RouterProfiles)
+
+		if err := d.Set("router_profile", routerProfiles); err != nil {
+			return fmt.Errorf("Error setting `router_profile`: %+v", err)
 		}
 	}
 
@@ -762,6 +769,26 @@ func expandOpenShiftClusterNetworkProfile(d *schema.ResourceData) *containerserv
 	return &profile
 }
 
+func expandOpenShiftClusterRouterProfiles(d *schema.ResourceData) []containerservice.OpenShiftRouterProfile {
+	configs := d.Get("router_profile").([]interface{})
+	profiles := make([]containerservice.OpenShiftRouterProfile, 0)
+
+	for config_id := range configs {
+		config := configs[config_id].(map[string]interface{})
+		name := config["name"].(string)
+		subdomain := config["public_subdomain"].(string)
+
+		profile := containerservice.OpenShiftRouterProfile{
+			Name:            utils.String(name),
+			PublicSubdomain: utils.String(subdomain),
+		}
+
+		profiles = append(profiles, profile)
+	}
+
+	return profiles
+}
+
 func flattenOpenShiftClusterAuthProfile(profile *containerservice.OpenShiftManagedClusterAuthProfile) interface{} {
 	if profile == nil {
 		return nil
@@ -893,4 +920,28 @@ func flattenOpenShiftClusterNetworkProfile(profile *containerservice.NetworkProf
 	}
 
 	return []interface{}{values}
+}
+
+func flattenOpenShiftClusterRouterProfiles(profiles *[]containerservice.OpenShiftRouterProfile) []interface{} {
+	if profiles == nil {
+		return []interface{}{}
+	}
+
+	routerProfiles := make([]interface{}, 0)
+
+	for _, profile := range *profiles {
+		routerProfile := make(map[string]interface{})
+
+		if profile.Name != nil {
+			routerProfile["name"] = *profile.Name
+		}
+
+		if profile.PublicSubdomain != nil {
+			routerProfile["public_subdomain"] = *profile.PublicSubdomain
+		}
+
+		routerProfiles = append(routerProfiles, routerProfile)
+	}
+
+	return routerProfiles
 }

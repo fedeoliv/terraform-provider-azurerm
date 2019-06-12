@@ -14,7 +14,6 @@ resource "azurerm_openshift_cluster" "example" {
   location                  = "${azurerm_resource_group.example.location}"
   resource_group_name       = "${azurerm_resource_group.example.name}"
   openshift_version         = "${var.openshift_version}"
-
   network_security_group_id = "${azurerm_network_security_group.test.id}"
   fqdn                      = ""
 
@@ -53,6 +52,11 @@ resource "azurerm_openshift_cluster" "example" {
   network_profile {
     vnet_cidr         = "10.0.0.0/8"
     peer_vnet_id      = "10.0.0.0/8"
+  }
+
+  router_profile {
+    name              = "default"
+    public_subdomain  = "b788fade68d345da9b77.location1.int.aksapp.io"
   }
 
   tags = {
