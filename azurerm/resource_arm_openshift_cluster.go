@@ -23,7 +23,6 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
 		},
-		// CustomizeDiff: ,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -37,21 +36,72 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 
 			"resource_group_name": azure.SchemaResourceGroupName(),
 
-			"dns_prefix": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     true,
-				ValidateFunc: validate.KubernetesDNSPrefix,
-			},
-
-			"kubernetes_version": {
+			"openshift_version": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Computed:     true,
 				ValidateFunc: validate.NoEmptyStrings,
 			},
 
-			"agent_pool_profile": {
+			"fqdn": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validate.NoEmptyStrings,
+			},
+
+			"auth_profile": {
+				Type:     schema.TypeList,
+				Required: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"providers": {
+							Type:     schema.TypeList,
+							Required: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"providers": {
+										Type:     schema.TypeList,
+										Required: true,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"name": {
+													Type:         schema.TypeString,
+													Required:     true,
+													ForceNew:     true,
+													ValidateFunc: validate.NoEmptyStrings,
+												},
+
+												"provider": {
+													Type:         schema.TypeMap,
+													Required:     true,
+													ForceNew:     true,
+													ValidateFunc: validate.NoEmptyStrings,
+													Elem: &schema.Resource{
+														Schema: map[string]*schema.Schema{
+															"kind": {
+																Type:     schema.TypeString,
+																Required: true,
+																ForceNew: true,
+																ValidateFunc: validation.StringInSlice([]string{
+																	string(containerservice.KindAADIdentityProvider),
+																	string(containerservice.KindOpenShiftManagedClusterBaseIdentityProvider),
+																}, true),
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+
+			"master_pool_profile": {
 				Type:     schema.TypeList,
 				Required: true,
 				Elem: &schema.Resource{
@@ -60,18 +110,7 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
-							ValidateFunc: validate.KubernetesAgentPoolName,
-						},
-
-						"type": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ForceNew: true,
-							Default:  string(containerservice.AvailabilitySet),
-							ValidateFunc: validation.StringInSlice([]string{
-								string(containerservice.AvailabilitySet),
-								string(containerservice.VirtualMachineScaleSets),
-							}, false),
+							ValidateFunc: validate.OpenShiftMasterPoolName,
 						},
 
 						"count": {
@@ -81,40 +120,12 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 							ValidateFunc: validation.IntBetween(1, 100),
 						},
 
-						// TODO: remove this field in the next major version
-						"dns_prefix": {
-							Type:       schema.TypeString,
-							Computed:   true,
-							Deprecated: "This field has been removed by Azure",
-						},
-
-						"fqdn": {
-							Type:       schema.TypeString,
-							Computed:   true,
-							Deprecated: "This field has been deprecated. Use the parent `fqdn` instead",
-						},
-
 						"vm_size": {
 							Type:             schema.TypeString,
 							Required:         true,
 							ForceNew:         true,
 							DiffSuppressFunc: suppress.CaseDifference,
 							ValidateFunc:     validate.NoEmptyStrings,
-						},
-
-						"os_disk_size_gb": {
-							Type:         schema.TypeInt,
-							Optional:     true,
-							ForceNew:     true,
-							Computed:     true,
-							ValidateFunc: validation.IntAtLeast(1),
-						},
-
-						"vnet_subnet_id": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ForceNew:     true,
-							ValidateFunc: azure.ValidateResourceID,
 						},
 
 						"os_type": {
@@ -129,113 +140,70 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 							DiffSuppressFunc: suppress.CaseDifference,
 						},
 
-						"max_pods": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Computed: true,
-							ForceNew: true,
+						"subnet_cidr": {
+							Type:         schema.TypeInt,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validate.NoEmptyStrings,
 						},
 					},
 				},
 			},
 
-			// Optional
-			"addon_profile": {
+			"agent_pool_profile": {
 				Type:     schema.TypeList,
-				MaxItems: 1,
-				Optional: true,
-				Computed: true,
+				Required: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"http_application_routing": {
-							Type:     schema.TypeList,
-							MaxItems: 1,
-							ForceNew: true,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"enabled": {
-										Type:     schema.TypeBool,
-										ForceNew: true,
-										Required: true,
-									},
-									"http_application_routing_zone_name": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-								},
-							},
-						},
-
-						"oms_agent": {
-							Type:     schema.TypeList,
-							MaxItems: 1,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"enabled": {
-										Type:     schema.TypeBool,
-										Required: true,
-									},
-									"log_analytics_workspace_id": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ValidateFunc: azure.ValidateResourceID,
-									},
-								},
-							},
-						},
-
-						"aci_connector_linux": {
-							Type:     schema.TypeList,
-							MaxItems: 1,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"enabled": {
-										Type:     schema.TypeBool,
-										Required: true,
-									},
-									"subnet_name": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ValidateFunc: validate.NoEmptyStrings,
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-
-			"linux_profile": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"admin_username": {
+						"name": {
 							Type:         schema.TypeString,
 							Required:     true,
 							ForceNew:     true,
-							ValidateFunc: validate.KubernetesAdminUserName,
+							ValidateFunc: validate.OpenShiftAgentPoolName,
 						},
-						"ssh_key": {
-							Type:     schema.TypeList,
+
+						"count": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      1,
+							ValidateFunc: validation.IntBetween(1, 100),
+						},
+
+						"vm_size": {
+							Type:             schema.TypeString,
+							Required:         true,
+							ForceNew:         true,
+							DiffSuppressFunc: suppress.CaseDifference,
+							ValidateFunc:     validate.NoEmptyStrings,
+						},
+
+						"os_type": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+							Default:  string(containerservice.Linux),
+							ValidateFunc: validation.StringInSlice([]string{
+								string(containerservice.Linux),
+								string(containerservice.Windows),
+							}, true),
+							DiffSuppressFunc: suppress.CaseDifference,
+						},
+
+						"subnet_cidr": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validate.NoEmptyStrings,
+						},
+
+						"role": {
+							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							MaxItems: 1,
-
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"key_data": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ForceNew:     true,
-										ValidateFunc: validate.NoEmptyStrings,
-									},
-								},
-							},
+							ValidateFunc: validation.StringInSlice([]string{
+								string(containerservice.Compute),
+								string(containerservice.Infra),
+							}, true),
 						},
 					},
 				},
@@ -243,230 +211,44 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 
 			"network_profile": {
 				Type:     schema.TypeList,
-				Optional: true,
+				Required: true,
 				Computed: true,
 				ForceNew: true,
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"network_plugin": {
-							Type:     schema.TypeString,
-							Required: true,
-							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(containerservice.Azure),
-								string(containerservice.Kubenet),
-							}, false),
+						"vnet_cidr": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validate.NoEmptyStrings,
 						},
 
-						"network_policy": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
-							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								string(containerservice.NetworkPolicyCalico),
-								string(containerservice.NetworkPolicyAzure),
-							}, false),
-						},
-
-						"dns_service_ip": {
+						"peer_vnet_id": {
 							Type:         schema.TypeString,
 							Optional:     true,
-							Computed:     true,
-							ForceNew:     true,
-							ValidateFunc: validate.IPv4Address,
-						},
-
-						"docker_bridge_cidr": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Computed:     true,
-							ForceNew:     true,
-							ValidateFunc: validate.CIDR,
-						},
-
-						"pod_cidr": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Computed:     true,
-							ForceNew:     true,
-							ValidateFunc: validate.CIDR,
-						},
-
-						"service_cidr": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Computed:     true,
-							ForceNew:     true,
-							ValidateFunc: validate.CIDR,
+							ValidateFunc: validate.NoEmptyStrings,
 						},
 					},
 				},
 			},
 
-			"role_based_access_control": {
+			"router_profile": {
 				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
-				ForceNew: true,
-				MaxItems: 1,
+				Optional: false,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"enabled": {
-							Type:     schema.TypeBool,
-							Required: true,
-							ForceNew: true,
-						},
-						"azure_active_directory": {
-							Type:     schema.TypeList,
-							Optional: true,
-							ForceNew: true,
-							MaxItems: 1,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"client_app_id": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ForceNew:     true,
-										ValidateFunc: validate.UUID,
-									},
-
-									"server_app_id": {
-										Type:         schema.TypeString,
-										Required:     true,
-										ForceNew:     true,
-										ValidateFunc: validate.UUID,
-									},
-
-									"server_app_secret": {
-										Type:         schema.TypeString,
-										ForceNew:     true,
-										Required:     true,
-										Sensitive:    true,
-										ValidateFunc: validate.NoEmptyStrings,
-									},
-
-									"tenant_id": {
-										Type:     schema.TypeString,
-										Optional: true,
-										Computed: true,
-										ForceNew: true,
-										// OrEmpty since this can be sourced from the client config if it's not specified
-										ValidateFunc: validate.UUIDOrEmpty,
-									},
-								},
-							},
+						"name": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ForceNew:     true,
+							ValidateFunc: validate.NoEmptyStrings,
 						},
 					},
 				},
 			},
 
 			"tags": tagsSchema(),
-
-			"fqdn": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			// Computed
-			"kube_admin_config": {
-				Type:     schema.TypeList,
-				Computed: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"host": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"username": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"password": {
-							Type:      schema.TypeString,
-							Computed:  true,
-							Sensitive: true,
-						},
-						"client_certificate": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"client_key": {
-							Type:      schema.TypeString,
-							Computed:  true,
-							Sensitive: true,
-						},
-						"cluster_ca_certificate": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
-			},
-
-			"kube_admin_config_raw": {
-				Type:      schema.TypeString,
-				Computed:  true,
-				Sensitive: true,
-			},
-
-			"kube_config": {
-				Type:     schema.TypeList,
-				Computed: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"host": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"username": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"password": {
-							Type:      schema.TypeString,
-							Computed:  true,
-							Sensitive: true,
-						},
-						"client_certificate": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"client_key": {
-							Type:      schema.TypeString,
-							Computed:  true,
-							Sensitive: true,
-						},
-						"cluster_ca_certificate": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
-			},
-
-			"kube_config_raw": {
-				Type:      schema.TypeString,
-				Computed:  true,
-				Sensitive: true,
-			},
-
-			"node_resource_group": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			"api_server_authorized_ip_ranges": {
-				Type:     schema.TypeSet,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validate.CIDR,
-				},
-			},
 		},
 	}
 }
@@ -873,17 +655,12 @@ func flattenOpenShiftClusterAgentPoolProfiles(profiles *[]containerservice.OpenS
 	for _, profile := range *profiles {
 		agentPoolProfile := make(map[string]interface{})
 
-		if profile.Count != nil {
-			agentPoolProfile["count"] = int(*profile.Count)
-		}
-
-		if fqdn != nil {
-			// temporarily persist the parent FQDN here until `fqdn` is removed from the `agent_pool_profile`
-			agentPoolProfile["fqdn"] = *fqdn
-		}
-
 		if profile.Name != nil {
 			agentPoolProfile["name"] = *profile.Name
+		}
+
+		if profile.Count != nil {
+			agentPoolProfile["count"] = int(*profile.Count)
 		}
 
 		if profile.VMSize != "" {
@@ -896,6 +673,10 @@ func flattenOpenShiftClusterAgentPoolProfiles(profiles *[]containerservice.OpenS
 
 		if profile.SubnetCidr != nil {
 			agentPoolProfile["subnet_cidr"] = string(*profile.SubnetCidr)
+		}
+
+		if profile.Role != "" {
+			agentPoolProfile["role"] = string(profile.Role)
 		}
 
 		agentPoolProfiles = append(agentPoolProfiles, agentPoolProfile)
