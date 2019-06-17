@@ -235,7 +235,7 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 
 			"router_profile": {
 				Type:     schema.TypeList,
-				Optional: false,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
