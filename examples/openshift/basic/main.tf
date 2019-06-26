@@ -42,7 +42,6 @@ resource "azurerm_openshift_cluster" "example" {
 
   network_profile {
     vnet_cidr         = "10.0.0.0/8"
-    peer_vnet_id      = "10.0.0.0/8"
   }
 
   router_profile {
