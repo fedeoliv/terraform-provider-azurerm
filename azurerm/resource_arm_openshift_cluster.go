@@ -43,13 +43,6 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 				ValidateFunc: validate.NoEmptyStrings,
 			},
 
-			"fqdn": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validate.NoEmptyStrings,
-			},
-
 			"auth_profile": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -277,7 +270,6 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	openshiftVersion := d.Get("openshift_version").(string)
-	fqdn := d.Get("fqdn").(string)
 	authProfile := expandOpenShiftClusterAuthProfile(d, tenantId)
 	masterProfile := expandOpenShiftClusterMasterPoolProfile(d)
 	agentProfiles := expandOpenShiftClusterAgentPoolProfiles(d)
@@ -290,9 +282,7 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 		Name:     &name,
 		Location: &location,
 		OpenShiftManagedClusterProperties: &containerservice.OpenShiftManagedClusterProperties{
-			OpenShiftVersion: utils.String(openshiftVersion),
-			// PublicHostname: ,
-			Fqdn:              &fqdn,
+			OpenShiftVersion:  utils.String(openshiftVersion),
 			AuthProfile:       authProfile,
 			MasterPoolProfile: masterProfile,
 			AgentPoolProfiles: &agentProfiles,
@@ -358,7 +348,6 @@ func resourceArmOpenShiftClusterRead(d *schema.ResourceData, meta interface{}) e
 	}
 
 	if props := resp.OpenShiftManagedClusterProperties; props != nil {
-		d.Set("fqdn", props.Fqdn)
 		d.Set("openshift_version", props.OpenShiftVersion)
 
 		authProfile := flattenOpenShiftClusterAuthProfile(props.AuthProfile)
@@ -373,7 +362,7 @@ func resourceArmOpenShiftClusterRead(d *schema.ResourceData, meta interface{}) e
 			return fmt.Errorf("Error setting `master_pool_profile`: %+v", err)
 		}
 
-		agentPoolProfiles := flattenOpenShiftClusterAgentPoolProfiles(props.AgentPoolProfiles, resp.Fqdn)
+		agentPoolProfiles := flattenOpenShiftClusterAgentPoolProfiles(props.AgentPoolProfiles)
 
 		if err := d.Set("agent_pool_profile", agentPoolProfiles); err != nil {
 			return fmt.Errorf("Error setting `agent_pool_profile`: %+v", err)
@@ -645,7 +634,7 @@ func flattenOpenShiftClusterMasterPoolProfile(profile *containerservice.OpenShif
 	return masterPoolProfile
 }
 
-func flattenOpenShiftClusterAgentPoolProfiles(profiles *[]containerservice.OpenShiftManagedClusterAgentPoolProfile, fqdn *string) []interface{} {
+func flattenOpenShiftClusterAgentPoolProfiles(profiles *[]containerservice.OpenShiftManagedClusterAgentPoolProfile) []interface{} {
 	if profiles == nil {
 		return []interface{}{}
 	}
