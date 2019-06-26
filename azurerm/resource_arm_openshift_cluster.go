@@ -38,8 +38,7 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 
 			"openshift_version": {
 				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
+				Required:     true,
 				ValidateFunc: validate.NoEmptyStrings,
 			},
 
