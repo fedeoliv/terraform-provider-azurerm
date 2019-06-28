@@ -42,6 +42,38 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 				ValidateFunc: validate.NoEmptyStrings,
 			},
 
+			"plan": {
+				Type:     schema.TypeList,
+				Required: false,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validate.NoEmptyStrings,
+						},
+
+						"product": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validate.NoEmptyStrings,
+						},
+
+						"promotion_code": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validate.NoEmptyStrings,
+						},
+
+						"publisher": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validate.NoEmptyStrings,
+						},
+					},
+				},
+			},
+
 			"auth_profile": {
 				Type:     schema.TypeList,
 				Required: true,
