@@ -6,8 +6,16 @@ variable "location" {
   description = "The Azure Region in which all resources in this example should be provisioned"
 }
 
-variable "network_security_group_name" {
-  description = "The Azure Network Security Group name to use for this Managed OpenShift Cluster"
+variable "plan_id" {
+  description = "The purchase plan ID"
+}
+
+variable "plan_product" {
+  description = "The product of the image from the Azure marketplace"
+}
+
+variable "plan_promotion_code" {
+  description = "The promotion code for the purchase plan"
 }
 
 variable "provider_kind" {

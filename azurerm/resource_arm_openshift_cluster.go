@@ -269,6 +269,7 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 
 	location := azure.NormalizeLocation(d.Get("location").(string))
 	openshiftVersion := d.Get("openshift_version").(string)
+	purchasePlan := expandOpenShiftClusterPurchasePlan(d)
 	authProfile := expandOpenShiftClusterAuthProfile(d, tenantId)
 	masterProfile := expandOpenShiftClusterMasterPoolProfile(d)
 	agentProfiles := expandOpenShiftClusterAgentPoolProfiles(d)
@@ -277,9 +278,9 @@ func resourceArmOpenShiftClusterCreateUpdate(d *schema.ResourceData, meta interf
 	tags := d.Get("tags").(map[string]interface{})
 
 	parameters := containerservice.OpenShiftManagedCluster{
-		//Plan: ,
 		Name:     &name,
 		Location: &location,
+		Plan:     purchasePlan,
 		OpenShiftManagedClusterProperties: &containerservice.OpenShiftManagedClusterProperties{
 			OpenShiftVersion:  utils.String(openshiftVersion),
 			AuthProfile:       authProfile,
@@ -346,6 +347,10 @@ func resourceArmOpenShiftClusterRead(d *schema.ResourceData, meta interface{}) e
 		d.Set("location", azure.NormalizeLocation(*location))
 	}
 
+	if plan := flattenOpenShiftClusterPurchasePlan(resp.Plan); plan != nil {
+		d.Set("plan", plan)
+	}
+
 	if props := resp.OpenShiftManagedClusterProperties; props != nil {
 		d.Set("openshift_version", props.OpenShiftVersion)
 
@@ -407,6 +412,30 @@ func resourceArmOpenShiftClusterDelete(d *schema.ResourceData, meta interface{})
 	}
 
 	return nil
+}
+
+func expandOpenShiftClusterPurchasePlan(d *schema.ResourceData) *containerservice.PurchasePlan {
+	purchasePlan := d.Get("plan").([]interface{})
+
+	if len(purchasePlan) == 0 {
+		return nil
+	}
+
+	config := purchasePlan[0].(map[string]interface{})
+
+	name := config["name"].(string)
+	product := config["product"].(string)
+	promotionCode := config["name"].(string)
+	publisher := config["publisher"].(string)
+
+	plan := containerservice.PurchasePlan{
+		Name:          utils.String(name),
+		Product:       utils.String(product),
+		PromotionCode: utils.String(promotionCode),
+		Publisher:     utils.String(publisher),
+	}
+
+	return &plan
 }
 
 func expandOpenShiftClusterMasterPoolProfile(d *schema.ResourceData) *containerservice.OpenShiftManagedClusterMasterPoolProfile {
@@ -601,6 +630,32 @@ func expandOpenShiftClusterIdentityProviderConfig(identityProvider containerserv
 	providerConfig["provider"] = provider
 
 	return providerConfig
+}
+
+func flattenOpenShiftClusterPurchasePlan(purchasePlan *containerservice.PurchasePlan) interface{} {
+	if purchasePlan == nil {
+		return nil
+	}
+
+	plan := make(map[string]interface{})
+
+	if purchasePlan.Name != nil {
+		plan["name"] = *purchasePlan.Name
+	}
+
+	if purchasePlan.Product != nil {
+		plan["product"] = *purchasePlan.Product
+	}
+
+	if purchasePlan.PromotionCode != nil {
+		plan["promotion_code"] = *purchasePlan.PromotionCode
+	}
+
+	if purchasePlan.Publisher != nil {
+		plan["publisher"] = *purchasePlan.Publisher
+	}
+
+	return plan
 }
 
 func flattenOpenShiftClusterMasterPoolProfile(profile *containerservice.OpenShiftManagedClusterMasterPoolProfile) interface{} {

@@ -9,6 +9,13 @@ resource "azurerm_openshift_cluster" "example" {
   resource_group_name       = "${azurerm_resource_group.example.name}"
   openshift_version         = "${var.openshift_version}"
 
+  plan {
+    name            = "${var.plan_id}"
+    product         = "${var.plan_product}"
+    promotion_code  = "${var.plan_promotion_code}"
+    publisher       = "${var.plan_id}"
+  }
+
   auth_profile {
     providers = [
       {
