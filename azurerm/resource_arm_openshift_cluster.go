@@ -253,6 +253,12 @@ func resourceArmOpenShiftCluster() *schema.Resource {
 							Optional:     true,
 							ValidateFunc: validate.NoEmptyStrings,
 						},
+
+						"vnet_id": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validate.NoEmptyStrings,
+						},
 					},
 				},
 			},
@@ -591,10 +597,12 @@ func expandOpenShiftClusterNetworkProfile(d *schema.ResourceData) *containerserv
 
 	vnetCidr := config["vnet_cidr"].(string)
 	peerVnetId := config["peer_vnet_id"].(string)
+	vnetId := config["vnet_id"].(string)
 
 	profile := containerservice.NetworkProfile{
 		VnetCidr:   utils.String(vnetCidr),
 		PeerVnetID: utils.String(peerVnetId),
+		VnetID:     utils.String(vnetId),
 	}
 
 	return &profile
@@ -773,6 +781,10 @@ func flattenOpenShiftClusterNetworkProfile(profile *containerservice.NetworkProf
 
 	if profile.PeerVnetID != nil {
 		values["peer_vnet_id"] = *profile.PeerVnetID
+	}
+
+	if profile.VnetID != nil {
+		values["vnet_id"] = *profile.VnetID
 	}
 
 	return []interface{}{values}
