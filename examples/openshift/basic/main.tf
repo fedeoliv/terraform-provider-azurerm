@@ -4,16 +4,43 @@ resource "azurerm_resource_group" "example" {
 }
 
 resource "azurerm_openshift_cluster" "example" {
-  name                      = "${var.prefix}-openshift"
-  location                  = "${azurerm_resource_group.example.location}"
-  resource_group_name       = "${azurerm_resource_group.example.name}"
-  openshift_version         = "${var.openshift_version}"
+  name                = "${var.prefix}-openshift"
+  location            = "${azurerm_resource_group.example.location}"
+  resource_group_name = "${azurerm_resource_group.example.name}"
+  openshift_version   = "${var.openshift_version}"
 
-  plan {
-    name            = "${var.plan_id}"
-    product         = "${var.plan_product}"
-    promotion_code  = "${var.plan_promotion_code}"
-    publisher       = "${var.plan_id}"
+  network_profile {
+    vnet_cidr = "10.0.0.0/8"
+  }
+
+  master_pool_profile {
+    name        = "master"
+    count       = 3
+    vm_size     = "Standard_D4s_v3"
+    os_type     = "Linux"
+    subnet_cidr = "10.0.0.0/24"
+  }
+
+  agent_pool_profile {
+    name        = "infra"
+    role        = "infra"
+    count       = 2
+    vm_size     = "Standard_D4s_v3"
+    os_type     = "Linux"
+    subnet_cidr = "10.0.0.0/24"
+  }
+
+  agent_pool_profile {
+    name        = "compute"
+    role        = "compute"
+    count       = 4
+    vm_size     = "Standard_D4s_v3"
+    os_type     = "Linux"
+    subnet_cidr = "10.0.0.0/24"
+  }
+
+  router_profile {
+    name = "default"
   }
 
   auth_profile {
@@ -21,41 +48,13 @@ resource "azurerm_openshift_cluster" "example" {
       {
         name = "Azure AD"
         provider = {
-          kind            = "${var.provider_kind}"
-          client_id       = "${var.provider_client_id}"
-          client_secret   = "${var.provider_client_secret}"
-          group_id        = "${var.provider_group_id}"
+          kind          = "${var.provider_kind}"
+          client_id     = "${var.provider_client_id}"
+          client_secret = "${var.provider_client_secret}"
+          group_id      = "${var.provider_group_id}"
         }
       }
     ]
-  }
-
-  master_pool_profile {
-    name              = "default"
-    count             = 3
-    vm_size           = "Standard_D2s_v3"
-    os_type           = "Linux"
-    subnet_cidr       = "10.0.0.0/24"
-  }
-
-  agent_pool_profile {
-    name              = "default"
-    count             = 3
-    vm_size           = "Standard_D2s_v3"
-    os_type           = "Linux"
-    subnet_cidr       = "10.0.0.0/24"
-    role              = "Compute"
-  }
-
-  network_profile {
-    vnet_cidr         = "10.0.0.0/8"
-    peer_vnet_id      = ""
-    vnet_id           = ""
-  }
-
-  router_profile {
-    name              = "default"
-    public_subdomain  = "b788fade68d345da9b77.location1.int.aksapp.io"
   }
 
   tags = {
